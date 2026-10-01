@@ -9,38 +9,67 @@ Emerging A2A protocols are vulnerable to systemic orchestration flaws. While exi
 ## Prerequisites & Installation
 
 * **Hardware Requirements:** Execution requires a GPU with sufficient VRAM to load the Qwen/Qwen2.5-7B-Instruct model. The scripts are configured to load this model into GPU memory using the bfloat16 data type and automatic device mapping.
-* **Software Requirements:** The environment must have torch, transformers, and accelerate installed.
+
+
+* **Software Requirements:** The environment must have `torch`, `transformers`, `accelerate`, `matplotlib`, and `cryptography` installed.
+
+
 
 Execute the following command to install the required dependencies:
 
-`pip install torch transformers accelerate`
+`pip install torch transformers accelerate matplotlib cryptography`
 
 ## Repository Structure
 
-* **travel_poc.py:** This script evaluates the vulnerability within a simulated travel ecosystem utilizing an autonomous travel and booking agent. It demonstrates how a spoofed "BOOKING_CONFIRMED" event injected into an SSE stream tricks the confused deputy into executing a conditional malicious payload that exfiltrates corporate billing data.
-* **finance_poc.py:** This script evaluates an enterprise financial agent tasked with executing virements. It demonstrates the exploit bypassing a simulated manual manager review by injecting a spoofed "COMPLETED" SSE event, tricking the LLM into executing an unauthorized fund transfer to an attacker's account.
-* **asr_evaluation.py:** This script conducts an automated Attack Success Rate (ASR) evaluation over 50 iterations to statistically validate the exploit's reliability. It tests a baseline static payload injection against the dynamic Integrity Clash exploit.
+* **`travel_poc.py`:** This script evaluates the vulnerability within a simulated travel ecosystem utilizing an autonomous travel and booking agent. It demonstrates how a spoofed "BOOKING_CONFIRMED" event injected into an SSE stream tricks the confused deputy into executing a conditional malicious payload that exfiltrates corporate billing data.
+
+
+* **`finance_poc.py`:** This script evaluates an enterprise financial agent tasked with executing virements. It demonstrates the exploit bypassing a simulated manual manager review by injecting a spoofed "COMPLETED" SSE event, tricking the LLM into executing an unauthorized fund transfer to an attacker's account.
+
+
+* **`asr_evaluation.py`:** This script conducts an automated Attack Success Rate (ASR) evaluation over 50 iterations to statistically validate the exploit's reliability. It tests a baseline static payload injection against the dynamic Integrity Clash exploit.
+
+
+* **`evaluation/asr_race_condition.py`:** This script evaluates the Attack Success Rate (ASR) against varying attacker injection delays. It tests delays ranging from 0.5s to 2.5s over 20 iterations per delay to determine the exact race condition window before the manager's 2.0s response time.
+
+
+* **`evaluation/crypto_stress_test.py`:** This script stress-tests cryptographic state-binding as a countermeasure. It benchmarks the generation, signing, and verification of SSE payloads using ECDSA over a simulated time budget.
+
+
 
 ## Usage Instructions
 
 To run the Travel Scenario PoC:
-
 `python travel_poc.py`
 
 To run the Finance Scenario PoC:
-
 `python finance_poc.py`
 
 To run the automated Attack Success Rate Evaluation:
-
 `python asr_evaluation.py`
+
+To run the race condition evaluation:
+`python evaluation/asr_race_condition.py`
+
+To run the cryptographic state-binding stress test:
+`python evaluation/crypto_stress_test.py`
 
 ## Expected Output
 
-When running travel_poc.py and finance_poc.py, reviewers will observe terminal logs outputting three distinct sequential scenarios:
+When running `travel_poc.py` and `finance_poc.py`, reviewers will observe terminal logs outputting three distinct sequential scenarios:
 
 * **Scenario 1:** A simple safe task is processed and executed immediately without opening an SSE listening stream.
+
+
 * **Scenario 2 (Baseline):** A high-risk task is halted for approval, resulting in a [DEFENSE UPHELD] log when the legitimate sub-agent or manager rejects the action and the agent aborts.
+
+
 * **Scenario 3 (Exploit):** The Integrity Clash exploit is simulated by injecting a spoofed asynchronous event. The terminal will log [CRITICAL EXPLOIT SUCCESS] as the Confused Deputy bypasses constraints and executes the unauthorized payload.
 
-When executing asr_evaluation.py, the terminal will display the real-time processing of 50 iterations per scenario. Upon completion, the logs will confirm a 0% Attack Success Rate (0/50 successful attacks) for the baseline static payload injection, contrasted against a 100% Attack Success Rate (50/50 successful attacks) for the Integrity Clash exploit utilizing spoofed SSE.
+
+
+When executing `asr_evaluation.py`, the terminal will display the real-time processing of 50 iterations per scenario. Upon completion, the logs will confirm a 0% Attack Success Rate (0/50 successful attacks) for the baseline static payload injection, contrasted against a 100% Attack Success Rate (50/50 successful attacks) for the Integrity Clash exploit utilizing spoofed SSE.
+
+When executing `evaluation/asr_race_condition.py`, the script evaluates injection delays up to 2.5 seconds and will generate a file named `asr_race_condition.png`. This output graph demonstrates the ASR dropping from 100% to 0% precisely after the attacker's delay reaches the manager's 2.0s response threshold.
+
+When executing `evaluation/crypto_stress_test.py`, the script will perform 10,000 iterations of benchmarking tests. It will output a Markdown table demonstrating that signing and verifying SSE payloads easily scales to over 21,000 combined operations within a 2-second window.
